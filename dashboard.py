@@ -3,15 +3,11 @@ import pandas as pd
 from pathlib import Path
 
 st.set_page_config(
-    page_title="Hacker News Popularity Prediction",
+    page_title="Hacker News Popularity Analytics",
     page_icon="📰",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# ---------------------------------------------------------
-# Load dataset
-# ---------------------------------------------------------
 
 DATA_FILE = Path(__file__).parent / "hacker_news_model_data.csv"
 
@@ -21,20 +17,14 @@ def load_data():
     return pd.read_csv(DATA_FILE)
 
 
-# ---------------------------------------------------------
-# Check dataset
-# ---------------------------------------------------------
-
 if not DATA_FILE.exists():
-    st.error("Dataset file not found.")
-    st.write("Expected file:")
-    st.code("hacker_news_model_data.csv")
+    st.error("hacker_news_model_data.csv was not found.")
     st.stop()
 
 try:
     df = load_data()
 except Exception as e:
-    st.error("The dataset could not be loaded.")
+    st.error("Unable to load the Hacker News dataset.")
     st.exception(e)
     st.stop()
 
@@ -43,11 +33,11 @@ except Exception as e:
 # Header
 # ---------------------------------------------------------
 
-st.title("📰 Hacker News Post Popularity Prediction")
+st.title("📰 Hacker News Popularity Analytics")
 
 st.write(
-    "Interactive dashboard for analyzing Hacker News post popularity "
-    "using machine learning."
+    "Explore Hacker News posts, popularity levels, engagement patterns, "
+    "and machine learning predictions."
 )
 
 st.divider()
@@ -62,194 +52,333 @@ st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Select Section",
     [
-        "Project Overview",
-        "Dataset Analysis",
+        "Overview",
+        "Popularity Analysis",
+        "Post Explorer",
         "Model Performance",
-        "Responsible AI",
-        "Final Portfolio"
+        "About the Data"
     ]
 )
 
 
 # =========================================================
-# PROJECT OVERVIEW
+# OVERVIEW
 # =========================================================
 
-if page == "Project Overview":
+if page == "Overview":
 
-    st.header("Project Overview")
+    st.header("Hacker News Popularity Overview")
 
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric(
-            "Total Posts",
-            f"{len(df):,}"
-        )
-
-    with col2:
-        st.metric(
-            "Model Features",
-            "24"
-        )
-
-    with col3:
-        st.metric(
-            "Popularity Classes",
-            "3"
-        )
-
-    st.divider()
-
-    st.subheader("Problem Statement")
-
-    st.write(
-        "The objective of this project is to predict the popularity of "
-        "Hacker News posts using machine learning. Posts are classified "
-        "into three popularity categories: Low, Medium, and High."
-    )
-
-    st.subheader("Popularity Classes")
-
-    class_data = pd.DataFrame(
-        {
-            "Class": ["Low", "Medium", "High"],
-            "Class Code": [0, 1, 2],
-            "Description": [
-                "Low popularity",
-                "Medium popularity",
-                "High popularity"
-            ]
-        }
-    )
-
-    st.dataframe(
-        class_data,
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("Project Pipeline")
-
-    st.write(
-        """
-        **Experiment 1:** Case Study Framing & Dataset Preparation
-
-        **Experiment 2:** Data Profiling, Cleaning & Feature Engineering
-
-        **Experiment 3:** EDA & Statistical Analysis
-
-        **Experiment 4:** ML Modeling & Experiment Tracking
-
-        **Experiment 5:** Explainable AI & Fairness Evaluation
-
-        **Experiment 6:** Containerization & API Deployment
-
-        **Experiment 7:** CI/CD Pipeline
-
-        **Experiment 8:** Dashboard, Responsible AI Reporting & Final Portfolio
-        """
-    )
-
-
-# =========================================================
-# DATASET ANALYSIS
-# =========================================================
-
-elif page == "Dataset Analysis":
-
-    st.header("Dataset Analysis")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("Records", f"{len(df):,}")
-
-    with col2:
-        st.metric("Columns", f"{len(df.columns):,}")
-
-    with col3:
-        st.metric(
-            "Missing Values",
-            f"{int(df.isnull().sum().sum()):,}"
-        )
-
-    st.divider()
-
-    # Popularity distribution
-
-    st.subheader("Popularity Distribution")
+    total_posts = len(df)
 
     if "popularity_label" in df.columns:
-
-        class_counts = (
+        popularity_counts = (
             df["popularity_label"]
             .value_counts()
             .reindex(["Low", "Medium", "High"])
             .fillna(0)
             .astype(int)
         )
+    else:
+        popularity_counts = pd.Series(
+            [0, 0, 0],
+            index=["Low", "Medium", "High"]
+        )
 
-        distribution_df = pd.DataFrame(
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Total Posts", f"{total_posts:,}")
+
+    with col2:
+        st.metric("Low Popularity", f"{popularity_counts['Low']:,}")
+
+    with col3:
+        st.metric("Medium Popularity", f"{popularity_counts['Medium']:,}")
+
+    with col4:
+        st.metric("High Popularity", f"{popularity_counts['High']:,}")
+
+    st.divider()
+
+    st.subheader("Popularity Distribution")
+
+    distribution = pd.DataFrame(
+        {
+            "Popularity": popularity_counts.index,
+            "Posts": popularity_counts.values
+        }
+    )
+
+    st.bar_chart(
+        distribution.set_index("Popularity")
+    )
+
+    st.subheader("Popularity Share")
+
+    share = (
+        popularity_counts / popularity_counts.sum() * 100
+    ).round(2)
+
+    share_df = pd.DataFrame(
+        {
+            "Popularity": share.index,
+            "Percentage": share.values
+        }
+    )
+
+    st.dataframe(
+        share_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.info(
+        "Popularity is divided into three categories: Low, Medium, "
+        "and High."
+    )
+
+
+# =========================================================
+# POPULARITY ANALYSIS
+# =========================================================
+
+elif page == "Popularity Analysis":
+
+    st.header("Popularity Analysis")
+
+    if "popularity_label" not in df.columns:
+        st.error("Popularity information is not available.")
+        st.stop()
+
+    popularity_counts = (
+        df["popularity_label"]
+        .value_counts()
+        .reindex(["Low", "Medium", "High"])
+        .fillna(0)
+        .astype(int)
+    )
+
+    st.subheader("Posts by Popularity Level")
+
+    st.bar_chart(
+        popularity_counts
+    )
+
+    st.divider()
+
+    # Score analysis
+
+    if "score" in df.columns:
+
+        st.subheader("Score Distribution")
+
+        score_stats = df["score"].describe()
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            st.metric(
+                "Average Score",
+                f"{df['score'].mean():.2f}"
+            )
+
+        with c2:
+            st.metric(
+                "Median Score",
+                f"{df['score'].median():.2f}"
+            )
+
+        with c3:
+            st.metric(
+                "Minimum Score",
+                f"{df['score'].min():.0f}"
+            )
+
+        with c4:
+            st.metric(
+                "Maximum Score",
+                f"{df['score'].max():.0f}"
+            )
+
+        score_distribution = (
+            df.groupby("popularity_label")["score"]
+            .mean()
+            .reindex(["Low", "Medium", "High"])
+        )
+
+        st.subheader("Average Score by Popularity")
+
+        st.bar_chart(score_distribution)
+
+    # Comments analysis
+
+    if "comments_count" in df.columns:
+
+        st.subheader("Comments and Engagement")
+
+        comment_stats = (
+            df.groupby("popularity_label")["comments_count"]
+            .mean()
+            .reindex(["Low", "Medium", "High"])
+        )
+
+        st.bar_chart(comment_stats)
+
+        engagement = pd.DataFrame(
             {
-                "Popularity Class": class_counts.index,
-                "Number of Posts": class_counts.values
+                "Popularity": comment_stats.index,
+                "Average Comments": comment_stats.values.round(2)
             }
         )
 
-        st.bar_chart(
-            distribution_df.set_index("Popularity Class")
-        )
-
         st.dataframe(
-            distribution_df,
+            engagement,
             use_container_width=True,
             hide_index=True
         )
 
-    # Dataset information
+    # Posting time
 
-    st.subheader("Dataset Information")
+    if "hour_posted" in df.columns:
 
-    info_col1, info_col2 = st.columns(2)
+        st.subheader("Posts by Hour")
 
-    with info_col1:
-        st.write("**Dataset Shape**")
-        st.write(f"Rows: {df.shape[0]:,}")
-        st.write(f"Columns: {df.shape[1]:,}")
+        hourly = df["hour_posted"].value_counts().sort_index()
 
-    with info_col2:
-        st.write("**Data Quality**")
-        st.write(
-            f"Missing values: {int(df.isnull().sum().sum()):,}"
-        )
-        st.write(
-            f"Duplicate rows: {int(df.duplicated().sum()):,}"
-        )
+        st.line_chart(hourly)
 
-    st.divider()
+    # Post type
 
-    # Dataset preview
+    if "post_type" in df.columns:
 
-    st.subheader("Dataset Preview")
+        st.subheader("Post Types")
 
-    st.dataframe(
-        df.head(10),
-        use_container_width=True
+        post_types = df["post_type"].value_counts()
+
+        st.bar_chart(post_types)
+
+
+# =========================================================
+# POST EXPLORER
+# =========================================================
+
+elif page == "Post Explorer":
+
+    st.header("🔎 Post Explorer")
+
+    st.write(
+        "Search and filter Hacker News posts by popularity and other "
+        "available attributes."
     )
 
-    # Numerical summary
+    # Popularity filter
 
-    st.subheader("Numerical Feature Summary")
+    if "popularity_label" in df.columns:
 
-    numeric_columns = df.select_dtypes(
-        include=["int64", "float64"]
-    ).columns
+        popularity_options = [
+            "All",
+            "Low",
+            "Medium",
+            "High"
+        ]
 
-    if len(numeric_columns) > 0:
+        selected_popularity = st.selectbox(
+            "Popularity",
+            popularity_options
+        )
+
+        filtered_df = df.copy()
+
+        if selected_popularity != "All":
+            filtered_df = filtered_df[
+                filtered_df["popularity_label"]
+                == selected_popularity
+            ]
+
+    else:
+        filtered_df = df.copy()
+
+    # Post type filter
+
+    if "post_type" in df.columns:
+
+        post_type_options = [
+            "All"
+        ] + sorted(
+            df["post_type"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+        selected_type = st.selectbox(
+            "Post Type",
+            post_type_options
+        )
+
+        if selected_type != "All":
+            filtered_df = filtered_df[
+                filtered_df["post_type"].astype(str)
+                == selected_type
+            ]
+
+    # Search
+
+    search_text = st.text_input(
+        "Search post titles",
+        placeholder="Enter a keyword..."
+    )
+
+    if search_text and "title" in filtered_df.columns:
+
+        filtered_df = filtered_df[
+            filtered_df["title"]
+            .astype(str)
+            .str.contains(
+                search_text,
+                case=False,
+                na=False
+            )
+        ]
+
+    st.write(
+        f"Showing **{len(filtered_df):,}** posts"
+    )
+
+    # Display useful columns
+
+    preferred_columns = [
+        "title",
+        "popularity_label",
+        "score",
+        "comments_count",
+        "post_type",
+        "domain",
+        "author"
+    ]
+
+    display_columns = [
+        column
+        for column in preferred_columns
+        if column in filtered_df.columns
+    ]
+
+    if display_columns:
+
         st.dataframe(
-            df[numeric_columns].describe().round(2),
-            use_container_width=True
+            filtered_df[display_columns],
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.dataframe(
+            filtered_df,
+            use_container_width=True,
+            hide_index=True
         )
 
 
@@ -259,11 +388,12 @@ elif page == "Dataset Analysis":
 
 elif page == "Model Performance":
 
-    st.header("Model Performance")
+    st.header("Popularity Prediction Model")
 
     st.write(
-        "The following results were obtained during Experiment 4 "
-        "using the 600-post test set."
+        "Machine learning models were evaluated for predicting whether "
+        "a Hacker News post belongs to the Low, Medium, or High "
+        "popularity category."
     )
 
     results = pd.DataFrame(
@@ -311,62 +441,49 @@ elif page == "Model Performance":
         hide_index=True
     )
 
-    st.subheader("Accuracy Comparison")
+    st.subheader("Accuracy")
 
-    accuracy_chart = results.set_index("Model")[["Accuracy"]]
+    st.bar_chart(
+        results.set_index("Model")[["Accuracy"]]
+    )
 
-    st.bar_chart(accuracy_chart)
+    st.subheader("Macro F1 Score")
 
-    st.subheader("Macro F1 Comparison")
-
-    f1_chart = results.set_index("Model")[["Macro F1"]]
-
-    st.bar_chart(f1_chart)
+    st.bar_chart(
+        results.set_index("Model")[["Macro F1"]]
+    )
 
     st.divider()
 
-    st.subheader("Selected Model")
+    st.subheader("Prediction Performance by Popularity")
 
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric(
-            "Model",
-            "Gradient Boosting"
-        )
-
-    with col2:
-        st.metric(
-            "Accuracy",
-            "46.17%"
-        )
-
-    with col3:
-        st.metric(
-            "Macro F1",
-            "0.4184"
-        )
-
-    st.write(
-        "The baseline Gradient Boosting model was selected as the final "
-        "model because it achieved an accuracy of approximately 0.4617 "
-        "and a macro F1 score of approximately 0.4184."
-    )
-
-    st.subheader("Class-Level Performance")
-
-    classification_report = pd.DataFrame(
+    class_performance = pd.DataFrame(
         {
-            "Class": ["Low", "Medium", "High"],
-            "Precision": [0.47, 0.44, 0.45],
-            "Recall": [0.73, 0.22, 0.34],
-            "F1 Score": [0.57, 0.29, 0.39],
-            "Support": [241, 184, 175]
+            "Popularity": [
+                "Low",
+                "Medium",
+                "High"
+            ],
+            "Precision": [
+                0.47,
+                0.44,
+                0.45
+            ],
+            "Recall": [
+                0.73,
+                0.22,
+                0.34
+            ],
+            "F1 Score": [
+                0.57,
+                0.29,
+                0.39
+            ]
         }
     )
 
     st.dataframe(
-        classification_report.style.format(
+        class_performance.style.format(
             {
                 "Precision": "{:.2f}",
                 "Recall": "{:.2f}",
@@ -377,149 +494,102 @@ elif page == "Model Performance":
         hide_index=True
     )
 
-
-# =========================================================
-# RESPONSIBLE AI
-# =========================================================
-
-elif page == "Responsible AI":
-
-    st.header("Responsible AI Evaluation")
-
-    st.subheader("1. Target Leakage")
-
-    st.write(
-        "Variables that could directly reveal the popularity target "
-        "were excluded from the model input. In particular, score and "
-        "engagement-related variables were not used as predictive "
-        "features where they could cause target leakage."
-    )
-
-    st.subheader("2. Explainable AI")
-
-    st.write(
-        "SHAP was used to analyze the contribution of model features "
-        "to predictions. A model-agnostic SHAP explainer was used "
-        "because the multiclass Gradient Boosting model was not "
-        "compatible with the TreeExplainer approach used initially."
-    )
-
-    st.subheader("3. Fairness Evaluation")
-
-    st.write(
-        "Fairness evaluation was attempted using available subgroup "
-        "information. The available test data contained insufficient "
-        "variation for meaningful subgroup comparisons in some cases."
-    )
-
-    st.write(
-        "For example, the verified post-type evaluation contained "
-        "only the story category, while the weekend comparison did "
-        "not contain a weekend subgroup. Therefore, these results "
-        "should not be interpreted as evidence that the model is "
-        "universally fair or unfair."
-    )
-
-    st.subheader("4. Model Limitations")
-
-    limitations = [
-        "The dataset contains 3,000 Hacker News posts.",
-        "Popularity can be affected by factors that are not captured by the available features.",
-        "The model does not guarantee future popularity.",
-        "Performance differs across the Low, Medium, and High classes.",
-        "The fairness analysis is limited by the available subgroup data."
-    ]
-
-    for item in limitations:
-        st.write("• " + item)
-
-    st.subheader("5. Responsible AI Summary")
-
     st.info(
-        "The model should be treated as an analytical prediction tool "
-        "rather than a guarantee of future post popularity. Its "
-        "predictions should be interpreted together with the dataset "
-        "limitations and class-level performance."
+        "The prediction model is intended to identify popularity "
+        "patterns. Actual post popularity can depend on many factors "
+        "that are not represented in the available data."
     )
 
 
 # =========================================================
-# FINAL PORTFOLIO
+# ABOUT THE DATA
 # =========================================================
 
-elif page == "Final Portfolio":
+elif page == "About the Data":
 
-    st.header("Final Project Portfolio")
-
-    st.subheader("Project Title")
+    st.header("About the Data")
 
     st.write(
-        "Hacker News Post Popularity Prediction using Machine Learning"
+        "This dashboard uses a dataset of Hacker News posts containing "
+        "post information, timing attributes, title characteristics, "
+        "topic indicators, and popularity information."
     )
 
-    st.subheader("Completed Experiments")
+    col1, col2, col3 = st.columns(3)
 
-    experiments = [
-        "Experiment 1 — Case Study Framing & Dataset Preparation",
-        "Experiment 2 — Data Profiling, Cleaning & Feature Engineering",
-        "Experiment 3 — EDA & Statistical Analysis",
-        "Experiment 4 — ML Modeling & Experiment Tracking",
-        "Experiment 5 — Explainable AI & Fairness Evaluation",
-        "Experiment 6 — Containerization & API Deployment",
-        "Experiment 7 — CI/CD Pipeline",
-        "Experiment 8 — Dashboard, Responsible AI Reporting & Final Portfolio"
-    ]
+    with col1:
+        st.metric(
+            "Posts",
+            f"{len(df):,}"
+        )
 
-    for experiment in experiments:
-        st.write("✅ " + experiment)
+    with col2:
+        st.metric(
+            "Columns",
+            f"{len(df.columns):,}"
+        )
+
+    with col3:
+        st.metric(
+            "Duplicate Rows",
+            f"{df.duplicated().sum():,}"
+        )
 
     st.divider()
 
-    st.subheader("Deployment Components")
+    st.subheader("Available Information")
 
-    deployment_components = [
-        "FastAPI prediction API",
-        "Saved Gradient Boosting model",
-        "Dockerfile",
-        "GitHub repository",
-        "GitHub Actions CI/CD workflow",
-        "Streamlit interactive dashboard"
-    ]
+    categories = {
+        "Post Information": [
+            "Post type",
+            "URL",
+            "Domain",
+            "Author"
+        ],
+        "Engagement": [
+            "Score",
+            "Comments count"
+        ],
+        "Timing": [
+            "Hour posted",
+            "Day of week",
+            "Month",
+            "Weekend indicator"
+        ],
+        "Title Characteristics": [
+            "Title length",
+            "Word count",
+            "Average word length",
+            "Uppercase count",
+            "Number count",
+            "Special character count"
+        ],
+        "Topic Indicators": [
+            "AI",
+            "Python",
+            "Open Source",
+            "Security",
+            "Database",
+            "Linux",
+            "Startup"
+        ]
+    }
 
-    for component in deployment_components:
-        st.write("• " + component)
+    for category, items in categories.items():
+
+        st.subheader(category)
+
+        for item in items:
+            st.write("• " + item)
 
     st.divider()
 
-    st.subheader("Final Model")
-
-    final_model = pd.DataFrame(
-        {
-            "Metric": [
-                "Model",
-                "Accuracy",
-                "Macro Precision",
-                "Macro Recall",
-                "Macro F1"
-            ],
-            "Result": [
-                "Gradient Boosting",
-                "0.4617",
-                "0.4529",
-                "0.4315",
-                "0.4184"
-            ]
-        }
-    )
+    st.subheader("Data Preview")
 
     st.dataframe(
-        final_model,
+        df.head(20),
         use_container_width=True,
         hide_index=True
-    )
-
-    st.success(
-        "Hacker News Popularity Prediction project portfolio completed."
     )
 
 
@@ -530,6 +600,5 @@ elif page == "Final Portfolio":
 st.divider()
 
 st.caption(
-    "Hacker News Popularity Prediction • Machine Learning & "
-    "Explainable AI Project"
-)
+    "Hacker News Popularity Analytics Dashboard"
+    )
