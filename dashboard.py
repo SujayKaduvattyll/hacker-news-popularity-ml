@@ -248,16 +248,6 @@ elif page == "Popularity Analysis":
 
         st.line_chart(hourly)
 
-    # Post type
-
-    if "post_type" in df.columns:
-
-        st.subheader("Post Types")
-
-        post_types = df["post_type"].value_counts()
-
-        st.bar_chart(post_types)
-
 
 # =========================================================
 # POST EXPLORER
